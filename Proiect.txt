@@ -1,1 +1,69 @@
-Test
+Research - Monitorizare Sistem Linux cu Bash
+Scopul Proiectului
+
+Scopul proiectului este dezvoltarea unei aplicații în Bash (sau Python) care să monitorizeze și să alerteze în legătură cu starea unui sistem Linux. Aplicația va rula continuu sub formă de serviciu systemd, colectând date esențiale despre performanță și securitate.
+Funcționalități necesare
+
+    Monitorizarea resurselor sistemului:
+
+        CPU utilizat (top, mpstat, uptime, grep din /proc/stat)
+
+        Memorie utilizată (free -m, vmstat)
+
+        Spațiu pe disc (df -h, du)
+
+        Disk I/O (iostat, iotop, vmstat)
+
+        Utilizare rețea (ifstat, vnstat, sar -n DEV)
+
+    Top 3 procese după:
+
+        CPU: ps -eo pid,comm,%cpu --sort=-%cpu | head -n 4
+
+        Memorie: ps -eo pid,comm,%mem --sort=-%mem | head -n 4
+
+        I/O: iotop -b -n 1 | head -n 10
+
+        Rețea: analiza cu iftop sau nethogs (dacă este permis)
+
+    Monitorizare fișiere critice:
+
+        /etc/passwd, /etc/shadow, /etc/hosts
+
+        Se face hash la fișierele inițiale (sha256sum) și se verifică periodic integritatea
+
+    Porturi de rețea deschise:
+
+        Comenzi utile: ss -tuln, netstat -tuln, nmap localhost
+
+    Monitorizare instalări pachete:
+
+        Pentru apt: analiza jurnalelor dpkg.log
+
+        Comandă: grep "install " /var/log/dpkg.log
+
+    Procese rulate cu drepturi de root:
+
+        ps -U root -u root u
+
+    Identificare cronjob-uri:
+
+        crontab -l, conținutul din /etc/crontab și /etc/cron.d/
+
+    Monitorizarea unei aplicații specifice:
+
+        Se poate verifica dacă rulează (pgrep), utilizare CPU/memorie (ps, top)
+
+        Ex: pgrep nginx sau ps aux | grep nume_aplicație
+
+Arhitectura Aplicației
+
+    Script principal scris în Bash
+
+    Logare periodică în fișier CSV (cu echo, date, >>)
+
+    Comparații de hash pentru detectarea modificărilor fișierelor
+
+    Poate utiliza cron sau while true; do ... sleep N pentru execuție periodică
+
+    Alerte simple prin notificări (email, syslog, mesaje)
