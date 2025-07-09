@@ -1,69 +1,54 @@
 Research - Monitorizare Sistem Linux cu Bash
+
 Scopul Proiectului
 
-Scopul proiectului este dezvoltarea unei aplicații în Bash (sau Python) care să monitorizeze și să alerteze în legătură cu starea unui sistem Linux. Aplicația va rula continuu sub formă de serviciu systemd, colectând date esențiale despre performanță și securitate.
+Scopul proiectului este dezvoltarea unei aplicații în Bash (sau Python) care să monitorizeze și să alerteze în legătură cu starea unui sistem Linux. Aplicația va rula continuu sub formă de serviciu systemd, colectând și salvând date esențiale despre performanță și securitate.
+
 Funcționalități necesare
 
-    Monitorizarea resurselor sistemului:
+1. Monitorizarea resurselor sistemului:
+   - CPU utilizat: top, mpstat, uptime, /proc/stat
+   - Memorie utilizată: free -m, vmstat
+   - Spațiu pe disc: df -h, du
+   - Disk I/O: iostat, iotop, vmstat
+   - Utilizare rețea: ifstat, vnstat, sar -n DEV
 
-        CPU utilizat (top, mpstat, uptime, grep din /proc/stat)
+2. Top 3 procese după consum:
+   - CPU: ps -eo pid,comm,%cpu --sort=-%cpu | head -n 4
+   - Memorie: ps -eo pid,comm,%mem --sort=-%mem | head -n 4
+   - I/O: iotop -b -n 1 | head -n 10
+   - Rețea: iftop, nethogs (dacă este disponibil)
 
-        Memorie utilizată (free -m, vmstat)
+3. Monitorizare fișiere critice:
+   - Fișiere: /etc/passwd, /etc/shadow, /etc/hosts
+   - Se generează hash-uri inițiale (sha256sum)
+   - Se compară periodic cu hash-urile actuale pentru detectarea modificărilor
 
-        Spațiu pe disc (df -h, du)
+4. Porturi de rețea deschise:
+   - ss -tuln, netstat -tuln, nmap localhost
 
-        Disk I/O (iostat, iotop, vmstat)
+5. Monitorizare instalări pachete:
+   - Pentru sistemele cu APT: grep "install " /var/log/dpkg.log
 
-        Utilizare rețea (ifstat, vnstat, sar -n DEV)
+6. Procese rulate cu drepturi de root:
+   - ps -U root -u root u
 
-    Top 3 procese după:
+7. Identificare cronjob-uri:
+   - crontab -l, /etc/crontab, /etc/cron.d/
 
-        CPU: ps -eo pid,comm,%cpu --sort=-%cpu | head -n 4
-
-        Memorie: ps -eo pid,comm,%mem --sort=-%mem | head -n 4
-
-        I/O: iotop -b -n 1 | head -n 10
-
-        Rețea: analiza cu iftop sau nethogs (dacă este permis)
-
-    Monitorizare fișiere critice:
-
-        /etc/passwd, /etc/shadow, /etc/hosts
-
-        Se face hash la fișierele inițiale (sha256sum) și se verifică periodic integritatea
-
-    Porturi de rețea deschise:
-
-        Comenzi utile: ss -tuln, netstat -tuln, nmap localhost
-
-    Monitorizare instalări pachete:
-
-        Pentru apt: analiza jurnalelor dpkg.log
-
-        Comandă: grep "install " /var/log/dpkg.log
-
-    Procese rulate cu drepturi de root:
-
-        ps -U root -u root u
-
-    Identificare cronjob-uri:
-
-        crontab -l, conținutul din /etc/crontab și /etc/cron.d/
-
-    Monitorizarea unei aplicații specifice:
-
-        Se poate verifica dacă rulează (pgrep), utilizare CPU/memorie (ps, top)
-
-        Ex: pgrep nginx sau ps aux | grep nume_aplicație
+8. Monitorizare aplicație specifică:
+   - Verificare dacă rulează: pgrep nume_aplicație
+   - Verificare resurse: ps aux | grep nume_aplicație
 
 Arhitectura Aplicației
 
-    Script principal scris în Bash
+- Script principal scris în Bash
+- Rulare continuă cu buclă while true; do ... sleep N
+- Alternativ: execuție periodică cu cron
+- Date salvate în fișier CSV sau log
+- Hash pentru detectarea modificărilor în fișiere
+- Alerte simple prin:
+  - Email (mailx, sendmail)
+  - Scriere în syslog
+  - Fișier separat pentru alerte (ex: alerte.log)
 
-    Logare periodică în fișier CSV (cu echo, date, >>)
-
-    Comparații de hash pentru detectarea modificărilor fișierelor
-
-    Poate utiliza cron sau while true; do ... sleep N pentru execuție periodică
-
-    Alerte simple prin notificări (email, syslog, mesaje)
