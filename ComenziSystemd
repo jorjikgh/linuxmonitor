@@ -1,3 +1,6 @@
 sudo systemctl daemon-reload
 sudo systemctl enable monitorizare
 sudo systemctl start monitorizare
+systemctl --user daemon-reload
+systemctl --user enable monitorizare.service
+systemctl --user start monitorizare.service

@@ -140,3 +140,7 @@ Timp,CPU%,Memorie%,Disk%,DiskIO,Net_RX/Net_TX,Top_CPU,Top_MEM,Cronjobs,Porturi,P
 2025-07-07 13:11:36,0,16.21,66%,0,"13671879 4462726","   1859 cinnamon        16.0;   1295 Xorg             1.5;   6809 firefox-bin      0.8;|   6809 firefox-bin      4.2;   7033 Isolated Web Co  2.6;   1859 cinnamon         2.6;",25,3,172,"OK","",NU_RULEAZA
 2025-07-07 13:12:37,0,16.20,66%,0,"13672079 4462870","   1859 cinnamon        15.9;   1295 Xorg             1.5;   6809 firefox-bin      0.8;|   6809 firefox-bin      4.2;   7033 Isolated Web Co  2.6;   1859 cinnamon         2.6;",25,3,172,"OK","",NU_RULEAZA
 2025-07-07 13:13:38,0,16.20,66%,0,"13672575 4463432","   1859 cinnamon        15.8;   1295 Xorg             1.5;   6809 firefox-bin      0.8;|   6809 firefox-bin      4.2;   7033 Isolated Web Co  2.6;   1859 cinnamon         2.6;",25,3,172,"OK","",NU_RULEAZA
+2025-07-10 11:33:18,0,15.14,66,0,3,177,2299,25
+2025-07-11 11:08:17,0,12.45,66,0,3,181,2299,25
+2025-07-11 11:09:24,49,12.47,66,0,3,175,2299,25
+2025-07-11 11:10:13,0,12.86,66,0,3,176,2299,25

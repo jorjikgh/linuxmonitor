@@ -3,15 +3,24 @@
 LOG_FILE="./monitorizare_log.csv"
 ALERT_LOG="/var/log/monitorizare_alert.log"
 HASH_DIR="./hashuri_initiale"
+APP_NAME="nginx"  # exemplu aplicație specifică
+
+CPU_THRESHOLD=1
+MEM_THRESHOLD=1
+DISK_THRESHOLD=1
 
 mkdir -p "$HASH_DIR"
 
 send_alert() {
     local message="$1"
-    echo "$(date '+%Y-%m-%d %H:%M:%S') ALERTA: $message" >> "$ALERT_LOG"
+    echo "$(date) ALERTĂ: $message" >> /tmp/monitorizare_debug.log
+    if command -v notify-send &>/dev/null; then
+        DISPLAY=:0 XAUTHORITY=/home/george/.Xauthority notify-send "Alerte sistem" "$message"
+        echo "$(date) notify-send executat" >> /tmp/monitorizare_debug.log
+    fi
 }
 
-# hash fisiere
+
 calc_hash() {
     sha256sum "$1" | awk '{print $1}'
 }
@@ -32,7 +41,7 @@ check_hashes() {
             new_hash=$(calc_hash "$f")
             old_hash_file="$HASH_DIR/$(basename $f).hash"
             if [ ! -f "$old_hash_file" ]; then
-                echo "$f: hash inițial absent" >> "$ALERT_LOG"
+                send_alert "$f: hash inițial absent"
             else
                 old_hash=$(cat "$old_hash_file")
                 if [ "$new_hash" != "$old_hash" ]; then
@@ -84,30 +93,37 @@ get_cronjobs_count() {
     echo $((cron_system + cron_user))
 }
 
+check_app_running() {
+    pgrep "$APP_NAME" >/dev/null
+    if [ $? -ne 0 ]; then
+        send_alert "Aplicația monitorizată ($APP_NAME) nu rulează!"
+    fi
+}
+
 monitor() {
     timestamp=$(date '+%Y-%m-%d %H:%M:%S')
 
-    # CPU %
+    # CPU
     cpu_util=$(top -bn1 | grep "Cpu(s)" | awk '{print $2 + $4}')
     cpu_util_int=${cpu_util%.*}
-    if [ "$cpu_util_int" -gt 90 ]; then
+    if [ "$cpu_util_int" -gt "$CPU_THRESHOLD" ]; then
         send_alert "CPU utilizat prea mult: ${cpu_util}%"
     fi
 
-    # Memorie %
+    # Memorie
     mem_util=$(free | awk '/Mem:/ {printf("%.2f"), $3/$2 * 100}')
     mem_util_int=${mem_util%.*}
-    if [ "$mem_util_int" -gt 90 ]; then
+    if [ "$mem_util_int" -gt "$MEM_THRESHOLD" ]; then
         send_alert "Memorie utilizată prea mult: ${mem_util}%"
     fi
 
-    # Disk utilizat (exemplu root partition)
+    # Disk
     disk_util=$(df / | tail -1 | awk '{print $5}' | sed 's/%//')
-    if [ "$disk_util" -gt 90 ]; then
+    if [ "$disk_util" -gt "$DISK_THRESHOLD" ]; then
         send_alert "Spațiu disk utilizat prea mult: ${disk_util}%"
     fi
 
-    # Disk I/O rate (folosind iostat dacă există)
+    # Disk I/O (dacă iostat disponibil)
     if command -v iostat &> /dev/null; then
         disk_io=$(iostat -d 1 2 | grep sda | tail -1 | awk '{print $3+$4}')
         disk_io_int=${disk_io%.*}
@@ -116,19 +132,18 @@ monitor() {
         fi
     fi
 
-    # Rețea (Rx+Tx în bytes)
+    # Rețea
     net_rx=$(cat /sys/class/net/eth0/statistics/rx_bytes 2>/dev/null || echo 0)
     net_tx=$(cat /sys/class/net/eth0/statistics/tx_bytes 2>/dev/null || echo 0)
     net_total=$((net_rx + net_tx))
-    # Alertă dacă rețeaua este inactivă (exemplu simplu)
     if [ "$net_total" -lt 1000 ]; then
         send_alert "Trafic rețea foarte scăzut: ${net_total} bytes"
     fi
 
-    # Monitorizare fișiere
+    # Fișiere
     check_hashes
 
-    # Porturi deschise
+    # Porturi
     ports_open=$(get_open_ports)
     if [ "$ports_open" -gt 100 ]; then
         send_alert "Număr mare de porturi deschise: ${ports_open}"
@@ -140,7 +155,7 @@ monitor() {
         send_alert "Număr mare de procese root: ${root_procs}"
     fi
 
-    # Pachete instalate (monitorizare schimbare)
+    # Pachete instalate
     installed_pkgs=$(get_installed_packages_count)
     if [ -z "$PREV_PKGS" ]; then PREV_PKGS=$installed_pkgs; fi
     if [ "$installed_pkgs" -gt "$PREV_PKGS" ]; then
@@ -148,7 +163,7 @@ monitor() {
         PREV_PKGS=$installed_pkgs
     fi
 
-    # Cronjob-uri
+    # Cronjobs
     cronjobs=$(get_cronjobs_count)
     if [ -z "$PREV_CRON" ]; then PREV_CRON=$cronjobs; fi
     if [ "$cronjobs" -gt "$PREV_CRON" ]; then
@@ -156,14 +171,17 @@ monitor() {
         PREV_CRON=$cronjobs
     fi
 
-    # Salvare date în CSV (exemplu simplificat)
+    # Aplicație monitorizată
+    check_app_running
+
+    # Scriere CSV
     echo "$timestamp,$cpu_util,$mem_util,$disk_util,$net_total,$ports_open,$root_procs,$installed_pkgs,$cronjobs" >> "$LOG_FILE"
 }
 
 case "$1" in
     init)
         init_hashes
-        echo "Init hashes done"
+        echo "Inițializare hash-uri completă."
         ;;
     run)
         while true; do
@@ -172,7 +190,7 @@ case "$1" in
         done
         ;;
     *)
-        echo "Usage: $0 {init|run}"
+        echo "Utilizare: $0 {init|run}"
         exit 1
         ;;
 esac
