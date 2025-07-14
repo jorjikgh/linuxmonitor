@@ -5,9 +5,9 @@ ALERT_LOG="/var/log/monitorizare_alert.log"
 HASH_DIR="./hashuri_initiale"
 APP_NAME="nginx"  # exemplu aplicație specifică
 
-CPU_THRESHOLD=1
-MEM_THRESHOLD=1
-DISK_THRESHOLD=1
+CPU_THRESHOLD=11
+MEM_THRESHOLD=11
+DISK_THRESHOLD=11
 
 mkdir -p "$HASH_DIR"
 
