@@ -1,15 +1,16 @@
 #!/bin/bash
 
-LOG_FILE="./monitorizare_log.csv"
-ALERT_LOG="/var/log/monitorizare_alert.log"
-HASH_DIR="./hashuri_initiale"
-APP_NAME="nginx"  # exemplu aplicație specifică
+BASE_DIR="$(dirname "$(readlink -f "$0")")"
+LOG_FILE="$BASE_DIR/monitorizare_log.csv"
+ALERT_LOG="$BASE_DIR/monitorizare_alert.log"
+HASH_DIR="$BASE_DIR/hashuri_initiale"
+APP_NAME="firefox"
 
-CPU_THRESHOLD=11
-MEM_THRESHOLD=11
-DISK_THRESHOLD=11
+CPU_THRESHOLD=30
+MEM_THRESHOLD=30
+DISK_THRESHOLD=30
 
-mkdir -p "$HASH_DIR"
+[ -d "$HASH_DIR" ] || mkdir -p "$HASH_DIR"
 
 send_alert() {
     local message="$1"
@@ -132,14 +133,19 @@ monitor() {
         fi
     fi
 
-    # Rețea
-    net_rx=$(cat /sys/class/net/eth0/statistics/rx_bytes 2>/dev/null || echo 0)
-    net_tx=$(cat /sys/class/net/eth0/statistics/tx_bytes 2>/dev/null || echo 0)
+# Rețea (detectare automată interfață activă)
+iface=$(ip route get 1.1.1.1 | awk '{print $5; exit}')
+if [ -n "$iface" ]; then
+    net_rx=$(cat /sys/class/net/$iface/statistics/rx_bytes 2>/dev/null || echo 0)
+    net_tx=$(cat /sys/class/net/$iface/statistics/tx_bytes 2>/dev/null || echo 0)
     net_total=$((net_rx + net_tx))
-    if [ "$net_total" -lt 1000 ]; then
-        send_alert "Trafic rețea foarte scăzut: ${net_total} bytes"
-    fi
 
+    if [ "$net_total" -lt 1000 ]; then
+        send_alert "Trafic rețea foarte scăzut pe $iface: ${net_total} bytes"
+    fi
+else
+    send_alert "Nu s-a putut detecta interfața de rețea."
+fi
     # Fișiere
     check_hashes
 
@@ -148,7 +154,9 @@ monitor() {
     if [ "$ports_open" -gt 100 ]; then
         send_alert "Număr mare de porturi deschise: ${ports_open}"
     fi
-
+#top3
+top3_cpu_names=$(get_top3_cpu | awk '{print $2}' | paste -sd ',' -)
+top3_mem_names=$(get_top3_mem | awk '{print $2}' | paste -sd ',' -)
     # Procese root
     root_procs=$(get_root_procs)
     if [ "$root_procs" -gt 100 ]; then
@@ -175,9 +183,10 @@ monitor() {
     check_app_running
 
     # Scriere CSV
-    echo "$timestamp,$cpu_util,$mem_util,$disk_util,$net_total,$ports_open,$root_procs,$installed_pkgs,$cronjobs" >> "$LOG_FILE"
-}
+    echo "Data:$timestamp,CPU%:$cpu_util,MEM%:$mem_util,DISK%:$disk_util,NETWORK:$net_total,PORTS:$ports_open,PROCS:$root_procs,PKGS:$installed_pkgs,CJ:$cronjobs,TOP3_CPU:$top3_cpu_names,TOP3_MEM:$top3_mem_names" >> "$LOG_FILE"
 
+
+}
 case "$1" in
     init)
         init_hashes
