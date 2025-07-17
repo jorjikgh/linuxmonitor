@@ -6,9 +6,9 @@ ALERT_LOG="$BASE_DIR/monitorizare_alert.log"
 HASH_DIR="$BASE_DIR/hashuri_initiale"
 APP_NAME="firefox"
 
-CPU_THRESHOLD=30
-MEM_THRESHOLD=30
-DISK_THRESHOLD=30
+CPU_THRESHOLD=80
+MEM_THRESHOLD=80
+DISK_THRESHOLD=80
 
 [ -d "$HASH_DIR" ] || mkdir -p "$HASH_DIR"
 
@@ -42,7 +42,7 @@ check_hashes() {
             new_hash=$(calc_hash "$f")
             old_hash_file="$HASH_DIR/$(basename $f).hash"
             if [ ! -f "$old_hash_file" ]; then
-                send_alert "$f: hash inițial absent"
+                send_alert "$f: hash initial absent"
             else
                 old_hash=$(cat "$old_hash_file")
                 if [ "$new_hash" != "$old_hash" ]; then
@@ -97,7 +97,7 @@ get_cronjobs_count() {
 check_app_running() {
     pgrep "$APP_NAME" >/dev/null
     if [ $? -ne 0 ]; then
-        send_alert "Aplicația monitorizată ($APP_NAME) nu rulează!"
+        send_alert "Aplicația monitorizată ($APP_NAME) nu ruleaza!"
     fi
 }
 
@@ -115,7 +115,7 @@ monitor() {
     mem_util=$(free | awk '/Mem:/ {printf("%.2f"), $3/$2 * 100}')
     mem_util_int=${mem_util%.*}
     if [ "$mem_util_int" -gt "$MEM_THRESHOLD" ]; then
-        send_alert "Memorie utilizată prea mult: ${mem_util}%"
+        send_alert "Memorie utilizata prea mult: ${mem_util}%"
     fi
 
     # Disk
@@ -124,16 +124,16 @@ monitor() {
         send_alert "Spațiu disk utilizat prea mult: ${disk_util}%"
     fi
 
-    # Disk I/O (dacă iostat disponibil)
+    # Disk I/O 
     if command -v iostat &> /dev/null; then
         disk_io=$(iostat -d 1 2 | grep sda | tail -1 | awk '{print $3+$4}')
         disk_io_int=${disk_io%.*}
         if [ "$disk_io_int" -gt 100 ]; then
-            send_alert "Rată Disk I/O ridicată: ${disk_io}"
+            send_alert "Rata Disk I/O ridicata: ${disk_io}"
         fi
     fi
 
-# Rețea (detectare automată interfață activă)
+# Network
 iface=$(ip route get 1.1.1.1 | awk '{print $5; exit}')
 if [ -n "$iface" ]; then
     net_rx=$(cat /sys/class/net/$iface/statistics/rx_bytes 2>/dev/null || echo 0)
@@ -141,12 +141,12 @@ if [ -n "$iface" ]; then
     net_total=$((net_rx + net_tx))
 
     if [ "$net_total" -lt 1000 ]; then
-        send_alert "Trafic rețea foarte scăzut pe $iface: ${net_total} bytes"
+        send_alert "Trafic retea foarte scazut pe $iface: ${net_total} bytes"
     fi
 else
-    send_alert "Nu s-a putut detecta interfața de rețea."
+    send_alert "Nu s-a putut detecta interfata de retea."
 fi
-    # Fișiere
+    # Files
     check_hashes
 
     # Porturi
@@ -157,17 +157,19 @@ fi
 #top3
 top3_cpu_names=$(get_top3_cpu | awk '{print $2}' | paste -sd ',' -)
 top3_mem_names=$(get_top3_mem | awk '{print $2}' | paste -sd ',' -)
+top3_disk=$(get_top3_disk_io | cut -d ':' -f 2 | paste -sd ',' -)
+
     # Procese root
     root_procs=$(get_root_procs)
     if [ "$root_procs" -gt 100 ]; then
-        send_alert "Număr mare de procese root: ${root_procs}"
+        send_alert "Numar mare de procese root: ${root_procs}"
     fi
 
     # Pachete instalate
     installed_pkgs=$(get_installed_packages_count)
     if [ -z "$PREV_PKGS" ]; then PREV_PKGS=$installed_pkgs; fi
     if [ "$installed_pkgs" -gt "$PREV_PKGS" ]; then
-        send_alert "Au fost instalate pachete noi: $installed_pkgs față de $PREV_PKGS"
+        send_alert "Au fost instalate pachete noi: $installed_pkgs fata de $PREV_PKGS"
         PREV_PKGS=$installed_pkgs
     fi
 
@@ -175,22 +177,22 @@ top3_mem_names=$(get_top3_mem | awk '{print $2}' | paste -sd ',' -)
     cronjobs=$(get_cronjobs_count)
     if [ -z "$PREV_CRON" ]; then PREV_CRON=$cronjobs; fi
     if [ "$cronjobs" -gt "$PREV_CRON" ]; then
-        send_alert "Au fost adăugate cronjob-uri noi: $cronjobs față de $PREV_CRON"
+        send_alert "Au fost adaugate cronjob-uri noi: $cronjobs fata de $PREV_CRON"
         PREV_CRON=$cronjobs
     fi
 
-    # Aplicație monitorizată
+    # Aplicatie monitorizata
     check_app_running
 
     # Scriere CSV
-    echo "Data:$timestamp,CPU%:$cpu_util,MEM%:$mem_util,DISK%:$disk_util,NETWORK:$net_total,PORTS:$ports_open,PROCS:$root_procs,PKGS:$installed_pkgs,CJ:$cronjobs,TOP3_CPU:$top3_cpu_names,TOP3_MEM:$top3_mem_names" >> "$LOG_FILE"
+    echo "Data:$timestamp,CPU%:$cpu_util,MEM%:$mem_util,DISK%:$disk_util,NETWORK:$net_total,PORTS:$ports_open,PROCS:$root_procs,PKGS:$installed_pkgs,CJ:$cronjobs,TOP3_CPU:$top3_cpu_names,TOP3_MEM:$top3_mem_names,TOP3_DISK:$top3_disk" >> "$LOG_FILE"
 
 
 }
 case "$1" in
     init)
         init_hashes
-        echo "Inițializare hash-uri completă."
+        echo "Initializare hash-uri completa."
         ;;
     run)
         while true; do
